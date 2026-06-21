@@ -1,0 +1,30 @@
+services:
+  ms-food:
+    build: .
+    ports:
+      - '3004:3004'
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - API_KEY=dev-api-key
+      - AUTO_SEED=true
+      - FIRESTORE_EMULATOR_HOST=firebase-emulator:8080
+    depends_on:
+      firebase-emulator:
+        condition: service_started
+    networks:
+      - superappdoar
+    restart: unless-stopped
+
+  firebase-emulator:
+    image: google/cloud-sdk:emulators
+    command: gcloud emulators firestore start --host-port=0.0.0.0:8080 --project=doar-dev-local
+    ports:
+      - '8083:8080'
+    networks:
+      - superappdoar
+    restart: unless-stopped
+
+networks:
+  superappdoar:
+    external: true
