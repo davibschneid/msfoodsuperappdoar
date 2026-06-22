@@ -29,12 +29,11 @@ export class GoogleSheetsService implements OnModuleInit {
     );
 
     if (clientEmail && privateKey) {
-      const auth = new google.auth.JWT(
-        clientEmail,
-        undefined,
-        privateKey.replace(/\\n/g, '\n'),
-        ['https://www.googleapis.com/auth/spreadsheets'],
-      );
+      const auth = new google.auth.JWT({
+        email: clientEmail,
+        key: privateKey.replace(/\\n/g, '\n'),
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      });
       this.sheets = google.sheets({ version: 'v4', auth });
       this.logger.log('Google Sheets API initialized');
     } else {
