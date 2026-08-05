@@ -4,6 +4,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsBoolean,
+  IsArray,
+  IsNumber,
 } from 'class-validator';
 
 export class CreateOngDto {
@@ -32,10 +34,10 @@ export class CreateOngDto {
   @IsNotEmpty()
   neighborhood: string;
 
-  @ApiProperty({ description: 'Rua / Avenida' })
+  @ApiProperty({ description: 'Endereço (rua / avenida)' })
   @IsString()
   @IsNotEmpty()
-  street: string;
+  address: string;
 
   @ApiProperty({ description: 'Número' })
   @IsString()
@@ -61,7 +63,36 @@ export class CreateOngDto {
   @IsOptional()
   spreadsheetId?: string;
 
-  @ApiProperty({ description: 'Categoria da ONG: clothes' })
+  @ApiPropertyOptional({ description: 'Descrição da ONG' })
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiPropertyOptional({ description: 'Emoji representativo da ONG' })
+  @IsString()
+  @IsOptional()
+  emoji?: string;
+
+  @ApiPropertyOptional({
+    description: 'Itens aceitos para doação',
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  acceptedItems?: string[];
+
+  @ApiPropertyOptional({ description: 'Latitude' })
+  @IsNumber()
+  @IsOptional()
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude' })
+  @IsNumber()
+  @IsOptional()
+  longitude?: number;
+
+  @ApiProperty({ description: 'Categoria da ONG: food' })
   @IsString()
   @IsNotEmpty()
   category: string;
@@ -96,7 +127,7 @@ export class UpdateOngDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
-  street?: string;
+  address?: string;
 
   @ApiPropertyOptional()
   @IsString()
@@ -122,6 +153,32 @@ export class UpdateOngDto {
   @IsString()
   @IsOptional()
   spreadsheetId?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  emoji?: string;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  acceptedItems?: string[];
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  @IsOptional()
+  latitude?: number;
+
+  @ApiPropertyOptional()
+  @IsNumber()
+  @IsOptional()
+  longitude?: number;
 }
 
 export class OngResponseDto {
@@ -131,12 +188,17 @@ export class OngResponseDto {
   city: string;
   state: string;
   neighborhood: string;
-  street: string;
+  address: string;
   number: string;
   complement?: string;
   referencePoint?: string;
   shareData: boolean;
   spreadsheetId?: string;
+  description: string;
+  emoji: string;
+  acceptedItems: string[];
+  latitude: number;
+  longitude: number;
   category: string;
   createdAt: string;
   updatedAt: string;
