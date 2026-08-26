@@ -89,12 +89,12 @@ export class OngsService {
   async findAll(): Promise<OngResponseDto[]> {
     const snapshot = await this.firebaseService
       .collection(this.COLLECTION)
-      .orderBy('createdAt', 'desc')
+      .where('category', '==', 'food')
       .get();
 
-    return snapshot.docs.map((doc) =>
-      this.toResponse(doc.id, doc.data() as Record<string, unknown>),
-    );
+    return snapshot.docs
+      .map((doc) => this.toResponse(doc.id, doc.data() as Record<string, unknown>))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 
   async findById(id: string): Promise<OngResponseDto> {
