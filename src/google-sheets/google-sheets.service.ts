@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { google, sheets_v4 } from 'googleapis';
 
@@ -14,31 +14,31 @@ export interface SheetRow {
 }
 
 @Injectable()
-export class GoogleSheetsService implements OnModuleInit {
+export class GoogleSheetsService {
   private readonly logger = new Logger(GoogleSheetsService.name);
   private sheets: sheets_v4.Sheets | null = null;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) {
+    this.initClient();
+  }
 
-  onModuleInit() {
-    const clientEmail = this.configService.get<string>(
-      'GOOGLE_SHEETS_CLIENT_EMAIL',
-    );
-    const privateKey = this.configService.get<string>(
-      'GOOGLE_SHEETS_PRIVATE_KEY',
+  private initClient() {
+    const credentialPath = this.configService.get<string>(
+      'GOOGLE_APPLICATION_CREDENTIALS',
     );
 
-    if (clientEmail && privateKey) {
-      const auth = new google.auth.JWT({
-        email: clientEmail,
-        key: privateKey.replace(/\\n/g, '\n'),
+    if (credentialPath) {
+      const auth = new google.auth.GoogleAuth({
+        keyFile: credentialPath,
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],
       });
       this.sheets = google.sheets({ version: 'v4', auth });
-      this.logger.log('Google Sheets API initialized');
+      this.logger.log(
+        'Google Sheets client initialized with service account credentials',
+      );
     } else {
       this.logger.warn(
-        'Google Sheets credentials not configured. Using mock mode.',
+        'GOOGLE_APPLICATION_CREDENTIALS not configured. Google Sheets will not work.',
       );
     }
   }

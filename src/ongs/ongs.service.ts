@@ -6,13 +6,17 @@ import {
 } from '@nestjs/common';
 import { FirebaseService } from '../firebase/firebase.service';
 import { CreateOngDto, UpdateOngDto, OngResponseDto } from './dto/ong.dto';
+import { GoogleSheetsService } from '../google-sheets/google-sheets.service';
 
 @Injectable()
 export class OngsService {
   private readonly logger = new Logger(OngsService.name);
   private readonly COLLECTION = 'ongs';
 
-  constructor(private readonly firebaseService: FirebaseService) {}
+  constructor(
+    private readonly firebaseService: FirebaseService,
+    private readonly googleSheets: GoogleSheetsService,
+  ) {}
 
   private toResponse(
     id: string,
@@ -179,5 +183,47 @@ export class OngsService {
 
     await docRef.delete();
     this.logger.log(`ONG deleted: ${id}`);
+  }
+
+  async getAllNeeds(): Promise<unknown[]> {
+    const ongs = await this.findAll();
+    const results: unknown[] = [];
+
+    for (const ong of ongs) {
+      if (ong.spreadsheetId) {
+        try {
+          const needs = await this.googleSheets.readNeeds(ong.spreadsheetId);
+          if (needs.length > 0) {
+            results.push({ ongId: ong.id, ongName: ong.name, needs });
+          }
+        } catch (error: unknown) {
+          const err = error as { message?: string };
+          this.logger.warn(`Failed to read needs for ONG ${ong.id}: ${err.message}`);
+        }
+      }
+    }
+
+    return results;
+  }
+
+  async getNeedsByOngId(id: string): Promise<unknown> {
+    const ong = await this.findById(id);
+    if (!ong.spreadsheetId) {
+      return { ongId: id, ongName: ong.name, needs: [] };
+    }
+    const needs = await this.googleSheets.readNeeds(ong.spreadsheetId);
+    return { ongId: id, ongName: ong.name, needs };
+  }
+
+  async updateArrecadado(
+    ongId: string,
+    rowIndex: number,
+    value: number,
+  ): Promise<void> {
+    const ong = await this.findById(ongId);
+    if (!ong.spreadsheetId) {
+      throw new NotFoundException(`ONG ${ongId} não possui planilha`);
+    }
+    await this.googleSheets.updateArrecadado(ong.spreadsheetId, rowIndex, value);
   }
 }

@@ -55,4 +55,28 @@ export class OngsController {
   delete(@Param('id') id: string) {
     return this.ongsService.delete(id);
   }
+
+  // --- Necessidades (Google Sheets) ---
+
+  @Get('needs')
+  @ApiOperation({ summary: 'Listar necessidades de todas as ONGs' })
+  getAllNeeds() {
+    return this.ongsService.getAllNeeds();
+  }
+
+  @Get('needs/ong/:ongId')
+  @ApiOperation({ summary: 'Buscar necessidades de uma ONG' })
+  getNeedsByOngId(@Param('ongId') ongId: string) {
+    return this.ongsService.getNeedsByOngId(ongId);
+  }
+
+  @Put('needs/ong/:ongId/arrecadado')
+  @ApiOperation({ summary: 'Atualizar valor arrecadado na planilha da ONG' })
+  updateArrecadado(
+    @Param('ongId') ongId: string,
+    @Body('rowIndex') rowIndex: number,
+    @Body('value') value: number,
+  ) {
+    return this.ongsService.updateArrecadado(ongId, rowIndex, value);
+  }
 }
