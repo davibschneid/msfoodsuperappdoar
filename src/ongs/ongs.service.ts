@@ -192,7 +192,9 @@ export class OngsService {
     for (const ong of ongs) {
       if (ong.spreadsheetId) {
         try {
-          const needs = await this.googleSheets.readNeeds(ong.spreadsheetId);
+          const needs = (await this.googleSheets.readNeeds(ong.spreadsheetId)).filter(
+            (n) => n.ativo !== 'Inativo',
+          );
           if (needs.length > 0) {
             results.push({ ongId: ong.id, ongName: ong.name, needs });
           }
@@ -211,7 +213,9 @@ export class OngsService {
     if (!ong.spreadsheetId) {
       return { ongId: id, ongName: ong.name, needs: [] };
     }
-    const needs = await this.googleSheets.readNeeds(ong.spreadsheetId);
+    const needs = (await this.googleSheets.readNeeds(ong.spreadsheetId)).filter(
+      (n) => n.ativo !== 'Inativo',
+    );
     return { ongId: id, ongName: ong.name, needs };
   }
 

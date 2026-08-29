@@ -40,11 +40,13 @@ export class NeedsService {
       needs = this.getMockNeeds();
     }
 
+    const activeNeeds = needs.filter((n) => n.ativo !== 'Inativo');
+
     return {
       ongId: ong.id,
       ongName: ong.name,
       category: ong.category,
-      needs,
+      needs: activeNeeds,
     };
   }
 
@@ -72,7 +74,7 @@ export class NeedsService {
         ongId: ong.id,
         ongName: ong.name,
         category: ong.category,
-        needs: needs.filter((n) => n.status !== 'Meta Atingida'),
+        needs: needs.filter((n) => n.ativo !== 'Inativo' && n.status !== 'Meta Atingida'),
       });
     }
 

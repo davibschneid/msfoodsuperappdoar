@@ -11,6 +11,7 @@ export interface SheetRow {
   status: string;
   dataAtualizacao: string;
   horaAtualizacao: string;
+  ativo: string;
 }
 
 @Injectable()
@@ -82,6 +83,7 @@ export class GoogleSheetsService {
           status,
           dataAtualizacao: String(row[5] ?? ''),
           horaAtualizacao: String(row[6] ?? ''),
+          ativo: String(row[7] ?? 'Ativo').trim(),
         };
       });
   }
