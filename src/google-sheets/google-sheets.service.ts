@@ -11,7 +11,7 @@ export interface SheetRow {
   status: string;
   dataAtualizacao: string;
   horaAtualizacao: string;
-  ativo: string;
+  ativo?: string;
 }
 
 @Injectable()
