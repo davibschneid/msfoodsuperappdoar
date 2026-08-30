@@ -44,6 +44,12 @@ export class OngsController {
     return this.ongsService.findBySpreadsheetId(spreadsheetId);
   }
 
+  @Get('cnpj/:cnpj')
+  @ApiOperation({ summary: 'Buscar ONG por CNPJ' })
+  findByCnpj(@Param('cnpj') cnpj: string) {
+    return this.ongsService.findByCnpj(cnpj);
+  }
+
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar ONG' })
   update(@Param('id') id: string, @Body() dto: UpdateOngDto) {

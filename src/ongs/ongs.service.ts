@@ -24,7 +24,9 @@ export class OngsService {
   ): OngResponseDto {
     return {
       id,
+      cnpj: (data.cnpj as string) ?? '',
       name: (data.name as string) ?? '',
+      email: (data.email as string) ?? '',
       cep: (data.cep as string) ?? '',
       city: (data.city as string) ?? '',
       state: (data.state as string) ?? '',
@@ -41,12 +43,24 @@ export class OngsService {
       latitude: (data.latitude as number) ?? 0,
       longitude: (data.longitude as number) ?? 0,
       category: (data.category as string) ?? '',
+      status: (data.status as string) ?? 'PRE_CADASTRADA',
+      dataCredenciamento: (data.dataCredenciamento as string) ?? '',
       createdAt: (data.createdAt as string) ?? '',
       updatedAt: (data.updatedAt as string) ?? '',
     };
   }
 
   async create(dto: CreateOngDto): Promise<OngResponseDto> {
+    const preRegistered = await this.findByCnpj(dto.cnpj).catch(() => null);
+
+    if (preRegistered) {
+      return this.update(preRegistered.id, {
+        ...dto,
+        status: 'CREDENCIADA',
+        dataCredenciamento: new Date().toISOString(),
+      } as UpdateOngDto);
+    }
+
     if (dto.spreadsheetId) {
       const existing = await this.findBySpreadsheetId(dto.spreadsheetId).catch(
         () => null,
@@ -60,7 +74,9 @@ export class OngsService {
 
     const now = new Date().toISOString();
     const docData = {
+      cnpj: dto.cnpj,
       name: dto.name,
+      email: dto.email ?? '',
       cep: dto.cep,
       city: dto.city,
       state: dto.state,
@@ -77,6 +93,8 @@ export class OngsService {
       latitude: dto.latitude ?? 0,
       longitude: dto.longitude ?? 0,
       category: dto.category,
+      status: dto.status ?? 'PRE_CADASTRADA',
+      dataCredenciamento: dto.dataCredenciamento ?? '',
       createdAt: now,
       updatedAt: now,
     };
@@ -131,6 +149,23 @@ export class OngsService {
     return this.toResponse(doc.id, doc.data() as Record<string, unknown>);
   }
 
+  async findByCnpj(cnpj: string): Promise<OngResponseDto> {
+    const snapshot = await this.firebaseService
+      .collection(this.COLLECTION)
+      .where('cnpj', '==', cnpj)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      throw new NotFoundException(
+        `ONG com CNPJ ${cnpj} não encontrada`,
+      );
+    }
+
+    const doc = snapshot.docs[0];
+    return this.toResponse(doc.id, doc.data() as Record<string, unknown>);
+  }
+
   async update(id: string, dto: UpdateOngDto): Promise<OngResponseDto> {
     const docRef = this.firebaseService.collection(this.COLLECTION).doc(id);
     const doc = await docRef.get();
@@ -143,7 +178,9 @@ export class OngsService {
       updatedAt: new Date().toISOString(),
     };
 
+    if (dto.cnpj !== undefined) updateData.cnpj = dto.cnpj;
     if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.email !== undefined) updateData.email = dto.email;
     if (dto.cep !== undefined) updateData.cep = dto.cep;
     if (dto.city !== undefined) updateData.city = dto.city;
     if (dto.state !== undefined) updateData.state = dto.state;
@@ -164,6 +201,9 @@ export class OngsService {
       updateData.acceptedItems = dto.acceptedItems;
     if (dto.latitude !== undefined) updateData.latitude = dto.latitude;
     if (dto.longitude !== undefined) updateData.longitude = dto.longitude;
+    if (dto.status !== undefined) updateData.status = dto.status;
+    if (dto.dataCredenciamento !== undefined)
+      updateData.dataCredenciamento = dto.dataCredenciamento;
 
     await docRef.update(updateData);
 

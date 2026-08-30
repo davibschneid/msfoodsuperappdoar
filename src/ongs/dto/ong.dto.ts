@@ -9,10 +9,20 @@ import {
 } from 'class-validator';
 
 export class CreateOngDto {
+  @ApiProperty({ description: 'CNPJ da ONG' })
+  @IsString()
+  @IsNotEmpty()
+  cnpj: string;
+
   @ApiProperty({ description: 'Nome da ONG' })
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @ApiProperty({ description: 'E-mail do responsável' })
+  @IsString()
+  @IsOptional()
+  email?: string;
 
   @ApiProperty({ description: 'CEP' })
   @IsString()
@@ -92,6 +102,16 @@ export class CreateOngDto {
   @IsOptional()
   longitude?: number;
 
+  @ApiProperty({ description: 'Status do credenciamento', default: 'PRE_CADASTRADA' })
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @ApiProperty({ description: 'Data do credenciamento' })
+  @IsString()
+  @IsOptional()
+  dataCredenciamento?: string;
+
   @ApiProperty({ description: 'Categoria da ONG: food' })
   @IsString()
   @IsNotEmpty()
@@ -102,7 +122,17 @@ export class UpdateOngDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
+  cnpj?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
   name?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  email?: string;
 
   @ApiPropertyOptional()
   @IsString()
@@ -179,11 +209,23 @@ export class UpdateOngDto {
   @IsNumber()
   @IsOptional()
   longitude?: number;
+
+  @ApiPropertyOptional({ description: 'Status do credenciamento' })
+  @IsString()
+  @IsOptional()
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Data do credenciamento' })
+  @IsString()
+  @IsOptional()
+  dataCredenciamento?: string;
 }
 
 export class OngResponseDto {
   id: string;
+  cnpj: string;
   name: string;
+  email: string;
   cep: string;
   city: string;
   state: string;
@@ -200,6 +242,8 @@ export class OngResponseDto {
   latitude: number;
   longitude: number;
   category: string;
+  status: string;
+  dataCredenciamento: string;
   createdAt: string;
   updatedAt: string;
 }
