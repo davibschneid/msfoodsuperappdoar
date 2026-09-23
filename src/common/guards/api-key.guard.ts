@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
@@ -19,7 +20,9 @@ export class ApiKeyGuard implements CanActivate {
       throw new UnauthorizedException('API_KEY não configurada no servidor');
     }
 
-    if (!apiKey || apiKey !== expectedKey) {
+    const actualDigest = createHash('sha256').update(apiKey ?? '').digest();
+    const expectedDigest = createHash('sha256').update(expectedKey).digest();
+    if (!apiKey || !timingSafeEqual(actualDigest, expectedDigest)) {
       throw new UnauthorizedException('API key inválida');
     }
 

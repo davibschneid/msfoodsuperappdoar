@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { FirebaseModule } from './firebase/firebase.module';
 import { GoogleSheetsModule } from './google-sheets/google-sheets.module';
@@ -11,7 +12,16 @@ import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validate: (config) => {
+        const deployed = ['hml', 'prd', 'production'].includes(String(config.APP_ENV ?? config.NODE_ENV).toLowerCase());
+        if (deployed && (!config.FIREBASE_PROJECT_ID || !config.API_KEY)) {
+          throw new Error('FIREBASE_PROJECT_ID e API_KEY são obrigatórios em HML/PRD');
+        }
+        return config;
+      },
+    }),
     ThrottlerModule.forRoot([
       {
         name: 'short',
@@ -29,6 +39,7 @@ import { SeedModule } from './seed/seed.module';
         limit: 200,
       },
     ]),
+    ScheduleModule.forRoot(),
     FirebaseModule,
     GoogleSheetsModule,
     HealthModule,

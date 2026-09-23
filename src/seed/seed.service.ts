@@ -18,6 +18,7 @@ export class SeedService implements OnModuleInit {
 
     const snapshot = await this.firebaseService
       .collection(this.COLLECTION)
+      .where('category', '==', 'food')
       .limit(1)
       .get();
 

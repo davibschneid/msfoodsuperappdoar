@@ -22,7 +22,7 @@ async function bootstrap() {
     }),
   );
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.SWAGGER_ENABLED === 'true' && process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
       .setTitle('Doar - MS Food')
       .setDescription('Microserviço de Gestão de Doações de Alimentos')
@@ -34,9 +34,10 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT ?? 3004;
-  await app.listen(port);
+  app.enableShutdownHooks();
+  await app.listen(port, '0.0.0.0');
   console.log(`MS Food running on http://localhost:${port}`);
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env.SWAGGER_ENABLED === 'true' && process.env.NODE_ENV !== 'production') {
     console.log(`Swagger docs: http://localhost:${port}/api/docs`);
   }
 }

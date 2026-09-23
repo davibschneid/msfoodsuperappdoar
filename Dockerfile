@@ -1,22 +1,16 @@
-FROM node:20-alpine AS builder
-
+FROM node:22-alpine AS builder
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm ci
-
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine
-
+FROM node:22-alpine AS runtime
+ENV NODE_ENV=production PORT=8080
 WORKDIR /app
-
 COPY package*.json ./
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/dist ./dist
-
-EXPOSE 3004
-
+RUN npm ci --omit=dev && npm cache clean --force
+COPY --from=builder --chown=node:node /app/dist ./dist
+USER node
+EXPOSE 8080
 CMD ["node", "dist/main.js"]

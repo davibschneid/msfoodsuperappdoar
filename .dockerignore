@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+serviceAccountKey.json
+**/*service-account*.json
+**/*credentials*.json
+.vscode
+.idea
+.DS_Store
+*.tsbuildinfo

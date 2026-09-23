@@ -22,6 +22,7 @@ export class NeedResponseDto {
   status: string;
   dataAtualizacao: string;
   horaAtualizacao: string;
+  ativo: string;
 }
 
 export class OngNeedsResponseDto {

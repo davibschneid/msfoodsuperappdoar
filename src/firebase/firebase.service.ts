@@ -5,6 +5,7 @@ import {
   getFirestore,
   Firestore,
   CollectionReference,
+  FieldValue,
 } from 'firebase-admin/firestore';
 
 @Injectable()
@@ -50,5 +51,45 @@ export class FirebaseService implements OnModuleInit {
 
   collection(name: string): CollectionReference {
     return this.db.collection(name);
+  }
+
+  async getCatalogVersion(category: 'clothes' | 'food' | 'furniture' | 'pets'): Promise<number> {
+    const snapshot = await this.db.collection('configuracaoApp').doc('catalogos').get();
+    const value = snapshot.get(`ongs.${category}Version`);
+    return typeof value === 'number' ? value : 0;
+  }
+
+  async incrementCatalogVersion(
+    category: 'clothes' | 'food' | 'furniture' | 'pets',
+  ): Promise<void> {
+    const versionField = `${category}Version`;
+    await this.db.collection('configuracaoApp').doc('catalogos').set(
+      {
+        ongs: {
+          [versionField]: FieldValue.increment(1),
+        },
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }
+
+  private readonly DEFAULT_CACHE_CHECK_PLANILHA_ONG_MINUTES = 60;
+
+  async getCacheCheckPlanilhaOngMinutes(): Promise<number> {
+    const docRef = this.db.collection('configuracaoApp').doc('catalogos');
+    const snapshot = await docRef.get();
+    const value = (snapshot.data() ?? {})
+      .cacheCheckPlanilhaOngMinutes as unknown;
+    if (typeof value === 'number' && value > 0) {
+      return value;
+    }
+    await docRef.set(
+      {
+        cacheCheckPlanilhaOngMinutes: this.DEFAULT_CACHE_CHECK_PLANILHA_ONG_MINUTES,
+      },
+      { merge: true },
+    );
+    return this.DEFAULT_CACHE_CHECK_PLANILHA_ONG_MINUTES;
   }
 }
