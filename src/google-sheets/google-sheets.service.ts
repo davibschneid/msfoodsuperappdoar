@@ -41,13 +41,13 @@ export class GoogleSheetsService {
 
   isConfigured(): boolean { return this.sheets !== null && this.drive !== null; }
 
-  async assertValidSpreadsheet(spreadsheetId: string): Promise<SpreadsheetValidationResult> {
-    const result = await this.validateSpreadsheet(spreadsheetId);
+  async assertValidSpreadsheet(spreadsheetId: string, expectedCategory?: string): Promise<SpreadsheetValidationResult> {
+    const result = await this.validateSpreadsheet(spreadsheetId, expectedCategory);
     if (!result.valid) throw new BadRequestException(result.errors);
     return result;
   }
 
-  async validateSpreadsheet(spreadsheetId: string): Promise<SpreadsheetValidationResult> {
+  async validateSpreadsheet(spreadsheetId: string, expectedCategory?: string): Promise<SpreadsheetValidationResult> {
     const id = spreadsheetId.trim();
     if (!/^[A-Za-z0-9_-]{20,128}$/.test(id)) return this.invalid('spreadsheetID inválido. Informe o ID ou URL de uma planilha Google Sheets.');
     if (!this.sheets || !this.drive) return this.invalid('A integração com Google Sheets não está configurada.');
@@ -55,7 +55,17 @@ export class GoogleSheetsService {
       const file = await this.drive.files.get({ fileId: id, fields: 'id,mimeType,capabilities(canEdit)' });
       if (file.data.mimeType !== 'application/vnd.google-apps.spreadsheet') return this.invalid('O arquivo informado não é uma planilha Google Sheets.');
       if (file.data.capabilities?.canEdit !== true) return this.invalid('A planilha não possui permissão de escrita para a conta de serviço do aplicativo.');
-      const metadata = await this.sheets.spreadsheets.get({ spreadsheetId: id, fields: 'sheets.properties.gridProperties(rowCount)' });
+      const metadata = await this.sheets.spreadsheets.get({ spreadsheetId: id, fields: 'properties.title,sheets.properties.gridProperties(rowCount)' });
+      const title = metadata.data.properties?.title ?? '';
+      if (expectedCategory) {
+        const detectedCategory = this.detectCategoryFromTitle(title);
+        if (detectedCategory && detectedCategory !== expectedCategory) {
+          return this.invalid(
+            `A planilha "${title}" é da categoria ${this.categoryLabel(detectedCategory)}. ` +
+              `O tipo da ONG é diferente da planilha compartilhada.`,
+          );
+        }
+      }
       const rowCount = metadata.data.sheets?.[0]?.properties?.gridProperties?.rowCount ?? 0;
       if (rowCount > 10001) return this.invalid('A planilha excede o limite configurado de 10.000 necessidades.');
       const formulaResponse = await this.sheets.spreadsheets.values.get({ spreadsheetId: id, range: 'A1:H10002', valueRenderOption: 'FORMULA' });
@@ -135,6 +145,26 @@ export class GoogleSheetsService {
   private invalid(error: string): SpreadsheetValidationResult { return { valid: false, errors: [error], validatedRows: 0 }; }
   private cell(value: unknown): string { return String(value ?? ''); }
   private normalized(value: string): string { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+  private detectCategoryFromTitle(title: string): string | null {
+    const normalized = this.normalized(title);
+    const tokens = normalized.split(/[^a-z0-9]+/);
+    const checks = [
+      { category: 'pets', tokens: ['pets', 'animais', 'animal', 'cachorros', 'gatos', 'caes'] },
+      { category: 'clothes', tokens: ['roupas', 'vestuario', 'agasalhos', 'calcados', 'tenis'] },
+      { category: 'food', tokens: ['alimentos', 'comida', 'mantimentos', 'mercadorias', 'cesta'] },
+      { category: 'furniture', tokens: ['moveis', 'movel', 'mobilia', 'objetos', 'utensilios', 'eletrodomesticos'] },
+    ];
+    for (const check of checks) {
+      if (check.tokens.some((token) => tokens.includes(token) || normalized.includes(token))) {
+        return check.category;
+      }
+    }
+    return null;
+  }
+  private categoryLabel(category: string): string {
+    const labels: Record<string, string> = { pets: 'Pets', clothes: 'Roupas', food: 'Alimentos', furniture: 'Objetos' };
+    return labels[category] ?? category;
+  }
   private canonicalStatus(value: string): string { const normalized = this.normalized(value); return normalized === 'inativo' ? 'Inativo' : normalized === 'pausado' ? 'Pausado' : 'Ativo'; }
   private suspiciousReason(value: string, column: number): string | null { if (Buffer.byteLength(value, 'utf8') > 500) return 'cell_size_limit'; if (/^[\s]*[=+@-]/.test(value) || value.startsWith('\t')) return 'formula_injection'; if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value)) return 'control_character'; if (/<\/?[a-z][^>]*>/i.test(value) || /<script\b/i.test(value)) return 'html_or_xss'; if (/\b(?:eval|exec)\s*\(|\bchild_process\b|\bprocess\s*\.|\brequire\s*\(|\bimport\s*\(/i.test(value)) return 'code_execution'; if (/\bunion\s+select\b|\bdrop\s+table\b|\binsert\s+into\b|\bdelete\s+from\b|\bupdate\s+\w+\s+set\b|--|\/\*|\*\//i.test(value)) return 'sql_injection'; if ((column === 0 || column === 3) && value.trim() && !/^[\p{L}\p{N} .,;'’()/%°ºª#&:_-]+$/u.test(value.trim())) return 'character_allowlist'; return null; }
   private auditRejection(line: number, column: string, reason: string): void { this.logger.warn(`SpreadsheetSecurityRejected line=${line} column=${column} reason=${reason}`); }

@@ -83,7 +83,7 @@ export class OngsService implements OnApplicationBootstrap {
     }
 
     if (dto.spreadsheetId) {
-      await this.googleSheets.assertValidSpreadsheet(dto.spreadsheetId);
+      await this.googleSheets.assertValidSpreadsheet(dto.spreadsheetId, this.CATEGORY);
       const existing = await this.findBySpreadsheetId(dto.spreadsheetId).catch(
         () => null,
       );
@@ -197,7 +197,7 @@ export class OngsService implements OnApplicationBootstrap {
     const spreadsheetChanged =
       dto.spreadsheetId !== undefined && dto.spreadsheetId !== current.spreadsheetId;
     if (spreadsheetChanged && dto.spreadsheetId) {
-      await this.googleSheets.assertValidSpreadsheet(dto.spreadsheetId);
+      await this.googleSheets.assertValidSpreadsheet(dto.spreadsheetId, this.CATEGORY);
       const existing = await this.findBySpreadsheetId(dto.spreadsheetId).catch(() => null);
       if (existing && existing.id !== id) throw new ConflictException(`Planilha ${dto.spreadsheetId} já cadastrada`);
     }
