@@ -1,5 +1,6 @@
 import {
   Injectable,
+  ConflictException,
   Logger,
   NotFoundException,
   OnApplicationBootstrap,
@@ -57,6 +58,9 @@ export class NeedsService implements OnApplicationBootstrap {
 
   async getNeedsByOngId(ongId: string): Promise<OngNeedsResponseDto> {
     const ong = await this.ongsService.findById(ongId);
+
+    const projection = (await this.firebaseService.collection(NEEDS_COLLECTION).doc(ongId).get()).data();
+    if (projection?.source === 'portal') return { ongId: ong.id, ongName: ong.name, category: ong.category, needs: projection.needs ?? [] };
 
     if (!ong.spreadsheetId) {
       return {
@@ -130,6 +134,7 @@ export class NeedsService implements OnApplicationBootstrap {
     value: number,
   ): Promise<void> {
     const ong = await this.ongsService.findById(ongId);
+    if ((await this.firebaseService.collection(NEEDS_COLLECTION).doc(ongId).get()).data()?.source === 'portal') throw new ConflictException('Necessidades do portal não podem ser alteradas por índice de planilha');
 
     if (!ong.spreadsheetId) {
       throw new NotFoundException(
@@ -225,17 +230,9 @@ export class NeedsService implements OnApplicationBootstrap {
     needs: SheetRow[],
   ): Promise<void> {
     const docRef = this.firebaseService.collection(NEEDS_COLLECTION).doc(ong.id);
-    await docRef.set(
-      {
-        ongId: ong.id,
-        ongName: ong.name,
-        category: ong.category,
-        spreadsheetId: ong.spreadsheetId,
-        needs,
-        syncedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+    await this.firebaseService.getFirestore().runTransaction(async tx => {
+      if ((await tx.get(docRef)).data()?.source === 'portal') return;
+      tx.set(docRef, { ongId: ong.id, ongName: ong.name, category: ong.category, spreadsheetId: ong.spreadsheetId, source: 'spreadsheet', needs, syncedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    });
   }
 }
