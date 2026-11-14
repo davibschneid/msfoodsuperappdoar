@@ -53,6 +53,7 @@ export class PortalNeedsService {
     return this.firebase.getFirestore().runTransaction(async tx => {
       const current = (await tx.get(ref)).data();
       if (!current || current.partnerId !== partnerId || current.category !== this.category) throw new NotFoundException('Necessidade não encontrada');
+      if (current.status === 'Concluída') throw new ConflictException('Necessidade concluída não pode ser alterada ou reaberta. Cadastre uma nova necessidade.');
       if (current.version !== input.version) throw new ConflictException('Esta necessidade foi alterada em outra sessão. Feche a edição e abra Editar novamente para carregar os valores atuais.');
       const changes = { arrecadado: input.arrecadado, unidade: input.unidade, urgencia: input.urgencia };
       if (current.arrecadado === changes.arrecadado && current.unidade === changes.unidade && current.urgencia === changes.urgencia) return { id, ...current };
@@ -92,6 +93,7 @@ export class PortalNeedsService {
       }
       if (!input && (!current || current.partnerId !== partnerId || current.category !== this.category)) throw new NotFoundException('Necessidade não encontrada');
       if (!input && current!.status === status) return { id, ...current };
+      if (!input && current!.status === 'Concluída') throw new ConflictException('Necessidade concluída não pode ser alterada ou reaberta. Cadastre uma nova necessidade.');
       const projection = (await tx.get(projectionRef)).data();
       if (projection && projection.source !== 'portal' && (!Array.isArray(projection.needs) || projection.needs.length)) throw new ConflictException('Migre as necessidades da planilha antes de usar o portal');
       const now = new Date().toISOString();
