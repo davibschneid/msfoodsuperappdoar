@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
-import { IsIn, IsNotEmpty, IsNumber, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsNumber, IsString, Matches, MaxLength, Min } from 'class-validator';
 import { ApiKeyGuard } from '../common/guards/api-key.guard';
 import { PortalNeedsService } from './portal-needs.service';
 
@@ -10,6 +10,13 @@ class CreateNeed {
   @IsNumber() @Min(0) arrecadado: number;
   @IsIn(['un.', 'kg', 'L', 'cx', 'pct']) unidade: string;
   @IsIn(['Alta', 'Média', 'Baixa']) urgencia: string;
+  @IsString() @IsNotEmpty() @MaxLength(128) actorUid: string;
+}
+class UpdateNeed {
+  @IsNumber() @Min(0) arrecadado: number;
+  @IsIn(['un.', 'kg', 'L', 'cx', 'pct']) unidade: string;
+  @IsIn(['Alta', 'Média', 'Baixa']) urgencia: string;
+  @IsInt() @Min(1) version: number;
   @IsString() @IsNotEmpty() @MaxLength(128) actorUid: string;
 }
 class ChangeStatus {
@@ -25,6 +32,10 @@ export class PortalNeedsController {
   list(@Param('ongId') id: string, @Query('cursor') cursor?: string) { return this.needs.list(id, cursor); }
   @Post()
   create(@Param('ongId') id: string, @Body() dto: CreateNeed) { return this.needs.create(id, dto.actorUid, dto.requestId, dto); }
+  @Get(':id')
+  get(@Param('ongId') ongId: string, @Param('id') id: string) { return this.needs.get(ongId, id); }
+  @Put(':id')
+  update(@Param('ongId') ongId: string, @Param('id') id: string, @Body() dto: UpdateNeed) { return this.needs.update(ongId, dto.actorUid, id, dto); }
   @Put(':id/status')
   status(@Param('ongId') ongId: string, @Param('id') id: string, @Body() dto: ChangeStatus) { return this.needs.setStatus(ongId, dto.actorUid, id, dto.status); }
 }

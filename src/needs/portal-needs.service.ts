@@ -34,6 +34,44 @@ export class PortalNeedsService {
     return this.mutate(partnerId, actorUid, requestId, payload);
   }
 
+  async get(partnerId: string, id: string) {
+    this.id(id);
+    await this.partner(partnerId);
+    const current = (await this.firebase.collection('partner_needs').doc(id).get()).data();
+    if (!current || current.partnerId !== partnerId || current.category !== this.category) throw new NotFoundException('Necessidade não encontrada');
+    const { fingerprint, ...record } = current;
+    return { id, ...record };
+  }
+
+  async update(partnerId: string, actorUid: string, id: string, input: { arrecadado: number; unidade: string; urgencia: string; version: number }) {
+    this.id(id);
+    if (!actorUid?.trim() || !input || !Number.isInteger(input.version) || input.version < 1 || !Number.isFinite(input.arrecadado) || input.arrecadado < 0 || !['un.', 'kg', 'L', 'cx', 'pct'].includes(input.unidade) || !['Alta', 'Média', 'Baixa'].includes(input.urgencia)) throw new BadRequestException('Dados inválidos');
+    const ong = await this.partner(partnerId);
+    const ref = this.firebase.collection('partner_needs').doc(id);
+    const projectionRef = this.firebase.collection('ongNeeds').doc(partnerId);
+    const eventRef = this.firebase.collection('partner_events').doc();
+    return this.firebase.getFirestore().runTransaction(async tx => {
+      const current = (await tx.get(ref)).data();
+      if (!current || current.partnerId !== partnerId || current.category !== this.category) throw new NotFoundException('Necessidade não encontrada');
+      if (current.version !== input.version) throw new ConflictException('Esta necessidade foi alterada em outra sessão. Feche a edição e abra Editar novamente para carregar os valores atuais.');
+      const changes = { arrecadado: input.arrecadado, unidade: input.unidade, urgencia: input.urgencia };
+      if (current.arrecadado === changes.arrecadado && current.unidade === changes.unidade && current.urgencia === changes.urgencia) return { id, ...current };
+      const projection = (await tx.get(projectionRef)).data();
+      if (projection && projection.source !== 'portal' && (!Array.isArray(projection.needs) || projection.needs.length)) throw new ConflictException('Migre as necessidades da planilha antes de usar o portal');
+      const now = new Date().toISOString();
+      const status = current.status === 'Ativa' && changes.arrecadado >= current.meta ? 'Concluída' : current.status;
+      const record = { ...current, ...changes, status, updatedAt: now, version: current.version + 1, ...(current.status === 'Ativa' && status === 'Concluída' ? { concludedAt: now } : {}) };
+      const needs = (projection?.needs ?? []).filter((need: { id: string }) => need.id !== id);
+      const date = new Date(now);
+      if (status === 'Ativa') needs.push({ id, item: current.item, meta: current.meta, ...changes, status: changes.arrecadado > 0 ? 'Em Andamento' : 'Pendente', ativo: 'Ativo', dataAtualizacao: date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }), horaAtualizacao: date.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) });
+      if (needs.length > 500 || Buffer.byteLength(JSON.stringify(needs)) > 700000) throw new ConflictException('Limite de necessidades ativas atingido');
+      tx.set(ref, record);
+      tx.create(eventRef, { partnerId, entityType: 'need', entityId: id, eventType: 'updated', actorUid, occurredAt: now, source: 'portal', version: record.version, changes: { previous: { arrecadado: current.arrecadado, unidade: current.unidade, urgencia: current.urgencia, status: current.status }, current: { ...changes, status } } });
+      tx.set(projectionRef, { ongId: partnerId, ongName: ong.name, category: this.category, source: 'portal', needs, updatedAt: now });
+      return { id, ...record };
+    });
+  }
+
   async setStatus(partnerId: string, actorUid: string, id: string, status: 'Ativa' | 'Concluída') {
     this.id(id);
     if (!actorUid?.trim() || !['Ativa', 'Concluída'].includes(status)) throw new BadRequestException('Operação inválida');
